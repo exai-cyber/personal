@@ -1,6 +1,3 @@
-//
-// Created by kubaz on 26.10.2025.
-//
 
 #include "password_strength.h"
 #include <cmath>
@@ -10,33 +7,6 @@
 #include <limits>
 #include <sstream>
 #include <iomanip>
-
-//function that makes timestamps easier to read by human
-std::string human_time(double seconds) {
-    if (!std::isfinite(seconds)) return "Infinity";
-    if (seconds < 1.0) return "less than 1 s";
-
-    const double minute = 60.0;
-    const double hour = 3600.0;
-    const double day = 86400.0;
-    const double year = 31557600.0;
-
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2);
-
-    if (seconds < minute) {
-        oss << seconds << " s";
-    } else if (seconds < hour) {
-        oss << (seconds / minute) << " min";
-    } else if (seconds < day) {
-        oss << (seconds / hour) << " hour";
-    } else if (seconds < year) {
-        oss << (seconds / day) << " days";
-    } else {
-        oss << (seconds / year) << " years";
-    }
-    return oss.str();
-}
 
 double calculate_pool_size(const std::string &password) {
     bool has_lower = false;
