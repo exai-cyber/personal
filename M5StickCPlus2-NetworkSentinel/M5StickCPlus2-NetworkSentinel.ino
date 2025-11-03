@@ -1,3 +1,6 @@
+/*New ideas:
+-ping detector
+*/
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <M5StickCPlus2.h>
@@ -7,7 +10,10 @@ int currentMode = 0;
 
 void showMenu();
 void runMode(int mode);
-void runConnectivityTest();
+//modes 
+void runConnectivityTest(); //2
+void showConfig(); //1
+void netScanner(); //0
 
 void setup() {
   M5.begin();
@@ -113,13 +119,14 @@ void runMode(int mode) {
       M5.Lcd.fillScreen(BLACK);
       M5.Lcd.println("Network Sentinel");
       // TODO: Main function that will scan network like nmap
+      netScanner();
       delay(2000);
       break;
 
     case 1:
       M5.Lcd.fillScreen(BLACK);
       M5.Lcd.println("WiFi config...");
-      // TODO: Function that show wifi configuration, private ip address
+      showConfig();
       delay(2000);
       break;
 
@@ -129,6 +136,61 @@ void runMode(int mode) {
   }
 }
 
+//--------------------------------MAIN FUNCTIONS----------------------------------------
+
+// =============================
+// Mode 0: Net scanner
+// =============================
+//For now it will be simple enumeration of local ip addresses that answers for ICMP ping
+void netScanner(){
+  ;
+}
+
+//---------------------------------------------------------------------------------------
+
+// =============================
+// Mode 1: Show config
+// =============================
+// SSID | LOCAL IP | RSSI(Signal strength in dBm) |  MAC address
+void showConfig() {
+  M5.Lcd.fillScreen(TFT_PURPLE);
+  M5.Lcd.setCursor(0, 0);
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.println("WiFi Configuration\n");
+
+  if (WiFi.status() != WL_CONNECTED) {
+    M5.Lcd.setTextColor(TFT_RED, TFT_PURPLE);
+    M5.Lcd.println("Status: Not connected");
+    delay(2000);
+    return;
+  }
+
+  // Displaying all info in different colors
+  M5.Lcd.setTextColor(TFT_ORANGE, TFT_PURPLE);
+  M5.Lcd.print("SSID: ");
+  M5.Lcd.println(WiFi.SSID());
+
+  M5.Lcd.setTextColor(TFT_GREEN, TFT_PURPLE);
+  M5.Lcd.print("IP: ");
+  M5.Lcd.println(WiFi.localIP());
+
+  M5.Lcd.setTextColor(TFT_YELLOW, TFT_PURPLE);
+  M5.Lcd.print("RSSI: ");
+  M5.Lcd.print(WiFi.RSSI());
+  M5.Lcd.println(" dBm");
+
+  M5.Lcd.setTextColor(TFT_CYAN, TFT_PURPLE);
+  M5.Lcd.print("MAC: ");
+  M5.Lcd.println(WiFi.macAddress());
+
+  M5.Lcd.setTextColor(TFT_WHITE, TFT_PURPLE);
+  M5.Lcd.println();
+  M5.Lcd.println("Press BtnA to go back");
+  delay(10000);
+}
+
+
+//---------------------------------------------------------------------------------------
 // =============================
 // Mode 2: Connectivity Test
 // =============================
