@@ -1,0 +1,5 @@
+M5StickCPlus2 Network Sentinel to lekki, przenośny dashboard sieciowy oparty na mikrokontrolerze ESP32 (M5StickC Plus 2). Projekt został zaprojektowany z myślą o szybkim monitorowaniu sieci lokalnej i wykrywaniu potencjalnie nieautoryzowanych urządzeń, na przykład nieznanych klientów, którzy uzyskali dostęp do naszej sieci Wi-Fi.
+
+Ideą projektu jest uproszczenie diagnostyki sieci: zamiast uruchamiać laptopa i korzystać z zaawansowanych narzędzi, wystarczy niewielkie urządzenie z ekranem, które w przejrzysty sposób prezentuje kluczowe informacje o połączeniu. W kolejnych etapach projekt ma zostać rozbudowany o funkcje skanujące, działające podobnie do nmap, umożliwiające szybką analizę i weryfikację bezpieczeństwa sieci.
+
+Projekt został stworzony wyłącznie do celów edukacyjnych i diagnostycznych. Należy używać go jedynie w sieciach, do których posiada się uprawniony dostęp i zgodę administratora.
