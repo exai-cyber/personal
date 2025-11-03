@@ -1,0 +1,7 @@
+#Arduino build files
+*.bin
+*.elf
+*.hex
+
+#Private config
+include/config_private.h
