@@ -1,3 +1,4 @@
+//TODO Visual updates/add menu 
 /*New ideas:
 -ping detector
 */
@@ -19,7 +20,7 @@ void netScanner(); //0
 //helpers for scanner/selection/portscan
 void discoverDevices();              //performs scan and fills foundIPv4[]
 int selectDevice();                  //interactive chooser, returns index or -1
-void portScan(uint32_t targetIPv4);  //simple TCP port scan on chosen IP
+void portScan(uint32_t targetIPv4, bool fullScan);  //simple TCP port scan on chosen IP (only open ports)
 String ipv4ToString(uint32_t ip);    //helper to format IP
 uint32_t ipToUint32(const IPAddress &ip);
 IPAddress uint32ToIP(uint32_t v);
@@ -33,7 +34,7 @@ bool wifiConnected(){
 }
 
 // storage for discovered hosts
-const int MAX_FOUND = 32;
+const int MAX_FOUND = 48;
 uint32_t foundIPv4[MAX_FOUND];
 int foundCount = 0;
 
@@ -156,6 +157,9 @@ void runMode(int mode){
 
 //--------------------------------MAIN FUNCTIONS----------------------------------------
 
+// =============================
+// Mode 0: Net scanner
+// =============================
 void netScanner(){
   isConnected = wifiConnected();
 
@@ -170,6 +174,17 @@ void netScanner(){
     }
   }
 
+  M5.Lcd.fillScreen(BLACK);
+  M5.Lcd.setTextColor(TFT_GREEN, BLACK);
+  M5.Lcd.println("Network Scanner");
+  M5.Lcd.setTextColor(WHITE, BLACK);
+  M5.Lcd.print("Local IP: ");
+  M5.Lcd.println(WiFi.localIP());
+  M5.Lcd.print("Subnet:  ");
+  M5.Lcd.println(WiFi.subnetMask());
+  M5.Lcd.println();
+  delay(800);
+
   discoverDevices();
 
   if (foundCount == 0) {
@@ -183,12 +198,24 @@ void netScanner(){
   }
 
   int idx = selectDevice();
-  if(idx >= 0 && idx < foundCount) {
-    portScan(foundIPv4[idx]);
+  if(idx >= 0 && idx < foundCount){
+    // prompt user for scan type: A = popular, B = all (1..1024)
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setCursor(0,0);
+    M5.Lcd.println("Choose port scan:");
+    M5.Lcd.println();
+    M5.Lcd.println("A) Popular ports");
+    M5.Lcd.println("B) All ports (1-1024)");
+    while (true){
+      M5.update();
+      if (M5.BtnA.wasPressed()) { portScan(foundIPv4[idx], false); break; }
+      if (M5.BtnB.wasPressed()) { portScan(foundIPv4[idx], true); break; }
+      delay(50);
+    }
   }
 }
 
-void discoverDevices() {
+void discoverDevices(){
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setCursor(0,0);
   M5.Lcd.println("Discovering devices\n");
@@ -204,9 +231,9 @@ void discoverDevices() {
   uint32_t start = netNum + 1;
   uint32_t end = broadcast - 1;
 
-  uint32_t maxHostsToScan = 4096;
+  uint32_t maxHostsToScan = 4096; 
   uint32_t hostsRange = (end >= start) ? (end - start + 1) : 0;
-  if (hostsRange > maxHostsToScan) {
+  if (hostsRange>maxHostsToScan){
     uint8_t a = localIP[0], b = localIP[1], c = localIP[2];
     start = ipToUint32(IPAddress(a, b, c, 1));
     end = ipToUint32(IPAddress(a, b, c, 254));
@@ -221,43 +248,41 @@ void discoverDevices() {
   M5.Lcd.println();
   M5.Lcd.println("Scanning (BtnB abort)\n");
 
-  const int pingAttempts   = 1;
-  const int tcpTimeoutMs   = 150;
-  const int smallDelay     = 8;
-  uint32_t scanned = 0;
-  uint32_t totalToScan = (end >= start) ? (end - start + 1) : 0;
+  const int pingAttempts=1;
+  const int tcpTimeoutMs=150;
+  const int smallDelay=6;
+  uint32_t scanned=0;
+  uint32_t totalToScan=(end >= start) ? (end - start + 1) : 0;
 
-  for (uint32_t cur = start; cur <= end; ++cur) {
+  for (uint32_t cur = start; cur <= end; ++cur){
     M5.update();
-    if (M5.BtnB.wasPressed()) {
+    if (M5.BtnB.wasPressed()){
       M5.Lcd.println("\nScan aborted");
       return;
     }
 
-    if (cur == ipNum) { scanned++; continue; }
+    if(cur == ipNum){ scanned++; }
 
-    IPAddress target = uint32ToIP(cur);
-    bool alive = Ping.ping(target, pingAttempts);
+    IPAddress target=uint32ToIP(cur);
+    bool alive=Ping.ping(target, pingAttempts);
 
-    if (!alive) {
+    if(!alive){
       WiFiClient sock;
-      if (sock.connect(target, 80, tcpTimeoutMs)) { alive = true; sock.stop(); }
-      else if (sock.connect(target, 443, tcpTimeoutMs)) { alive = true; sock.stop(); }
+      if(sock.connect(target, 80, tcpTimeoutMs)){ alive = true; sock.stop(); }
+      else if(sock.connect(target, 443, tcpTimeoutMs)){ alive = true; sock.stop(); }
+      else if(sock.connect(target, 22, tcpTimeoutMs)){ alive = true; sock.stop(); }
     }
 
-    if (alive) {
-      if (foundCount < MAX_FOUND) foundIPv4[foundCount] = cur;
+    if(alive){
+      if(foundCount < MAX_FOUND) foundIPv4[foundCount] = cur;
       foundCount++;
-      M5.Lcd.print(ipv4ToString(cur));
-      M5.Lcd.println(" - up");
     }
 
     scanned++;
-    if ((scanned % 12) == 0 || scanned == totalToScan) {
-      M5.Lcd.print("Scanned: ");
-      M5.Lcd.print(scanned);
-      M5.Lcd.print("/");
-      M5.Lcd.println(totalToScan);
+    if((scanned % 4)==0||scanned==totalToScan){
+      M5.Lcd.setCursor(0, 70);
+      M5.Lcd.setTextColor(TFT_YELLOW, BLACK);
+      M5.Lcd.printf("Progress: %u/%u   ", scanned, totalToScan);
     }
 
     delay(smallDelay);
@@ -270,26 +295,28 @@ void discoverDevices() {
   delay(300);
 }
 
-int selectDevice() {
-  if (foundCount == 0) return -1;
+int selectDevice(){
+  if(foundCount == 0)return -1;
 
-  const int perPage = 6;
-  int page = 0;
-  int cursor = 0;
-  int totalPages = (foundCount + perPage - 1) / perPage;
+  const int perPage=6;
+  int page=0;
+  int cursor=0;
 
-  while (true) {
+  int totalPages=(foundCount + perPage - 1)/perPage;
+
+  while(true){
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setCursor(0, 0);
     M5.Lcd.printf("Select device (%d)\n\n", foundCount);
 
-    int start = page * perPage;
-    int end = min(start + perPage, foundCount);
-    for (int i = start; i < end; ++i) {
-      if (i == cursor) {
+    int start=page * perPage;
+    int end=min(start + perPage, foundCount);
+    for(int i = start; i < end; ++i){
+      if(i == cursor){
         M5.Lcd.setTextColor(TFT_GREEN, BLACK);
         M5.Lcd.print("> ");
-      } else {
+      } 
+      else{
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.print("  ");
       }
@@ -299,15 +326,16 @@ int selectDevice() {
     M5.Lcd.setTextColor(TFT_YELLOW, BLACK);
     M5.Lcd.printf("\nA-next  B-select  Pg %d/%d", page+1, totalPages);
 
-    while (true) {
+    //wait for input - A moves cursor, B selects
+    while (true){
       M5.update();
-      if (M5.BtnA.wasPressed()) {
+      if(M5.BtnA.wasPressed()){
         cursor++;
-        if (cursor >= foundCount) cursor = 0;
-        page = cursor / perPage;
+        if(cursor >= foundCount) cursor = 0;
+        page=cursor/perPage;
         break;
       }
-      if (M5.BtnB.wasPressed()) {
+      if(M5.BtnB.wasPressed()){
         return cursor;
       }
       delay(50);
@@ -317,41 +345,52 @@ int selectDevice() {
   return -1;
 }
 
-//simple TCP port scanner for selected IP (shows only OPEN ports)
-void portScan(uint32_t targetIPv4) {
+//simple TCP port scanner for selected IP (only open ports)
+//fullScan: false = popular ports, true = all ports 1..1024
+void portScan(uint32_t targetIPv4, bool fullScan){
   IPAddress target = uint32ToIP(targetIPv4);
 
-  const int ports[] = {22, 23, 80, 443, 8080, 8443, 3306, 3389};
-  const int NPORTS = sizeof(ports) / sizeof(ports[0]);
-  const int tcpTimeoutMs = 180;
+  const int popularPorts[]={22, 23, 80, 443, 8080, 8443, 3306, 3389};
+  const int npop=sizeof(popularPorts)/sizeof(popularPorts[0]);
 
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setCursor(0,0);
   M5.Lcd.printf("Port scan: %s\n\n", ipv4ToString(targetIPv4).c_str());
 
-  bool anyOpen = false;
+  bool anyOpen=false;
 
-  for (int i = 0; i < NPORTS; ++i) {
-    int p = ports[i];
-    WiFiClient sock;
-    if (sock.connect(target, p, tcpTimeoutMs)) {
-      M5.Lcd.printf("Port %d: OPEN\n", p);
-      sock.stop();
-      anyOpen = true;
+  if(!fullScan){
+    for(int i = 0; i < npop; ++i){
+      int p = popularPorts[i];
+      WiFiClient sock;
+      if(sock.connect(target, p, 200)){
+        M5.Lcd.printf("Port %d: OPEN\n", p);
+        sock.stop();
+        anyOpen = true;
+      }
+      M5.update();
+      if(M5.BtnB.wasPressed()){ M5.Lcd.println("\nScan aborted"); break; }
+      delay(40);
     }
-
-    M5.update();
-    if (M5.BtnB.wasPressed()) {
-      M5.Lcd.println("\nScan aborted");
-      break;
+  } 
+  else{
+    for(int p = 1; p <= 1024; ++p){
+      WiFiClient sock;
+      if(sock.connect(target, p, 120)){
+        M5.Lcd.printf("Port %d: OPEN\n", p);
+        sock.stop();
+        anyOpen = true;
+      }
+      M5.update();
+      if(M5.BtnB.wasPressed()){ M5.Lcd.println("\nScan aborted"); break; }
+      if((p % 16) == 0)delay(20);
     }
-    delay(40);
   }
 
-  if (!anyOpen) M5.Lcd.println("No open ports detected.");
+  if(!anyOpen)M5.Lcd.println("No open ports detected.");
 
   M5.Lcd.println("\nPress B to return");
-  while (!M5.BtnB.wasPressed()) {
+  while(!M5.BtnB.wasPressed()){
     M5.update();
     delay(50);
   }
