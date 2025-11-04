@@ -1,6 +1,3 @@
-/*New ideas:
--ping detector
-*/
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <M5StickCPlus2.h>
@@ -13,7 +10,6 @@ bool isConnected=false;//--->every function will check if wifiConnected()
 void showMenu();
 void runMode(int mode);
 //modes 
-void runConnectivityTest(); //2
 void showConfig(); //1
 void netScanner(); //0
 
@@ -64,7 +60,7 @@ void loop() {
 
   if(M5.BtnA.wasPressed()){
     currentMode++;
-    if(currentMode>2)currentMode = 0;
+    if(currentMode>1)currentMode = 0;
     showMenu();
   }
 
@@ -89,11 +85,6 @@ void showMenu(){
     textColor = TFT_ORANGE;
     highlightColor = TFT_ORANGE;
   } 
-  else if (currentMode == 2){
-    bgColor = TFT_CYAN;
-    textColor = TFT_NAVY; 
-    highlightColor = TFT_RED;
-  }
 
   M5.Lcd.fillScreen(bgColor);
   M5.Lcd.setTextColor(textColor, bgColor);
@@ -108,26 +99,15 @@ void showMenu(){
     M5.Lcd.setTextColor(highlightColor, bgColor);
     M5.Lcd.println("> Network Sentinel");
     M5.Lcd.setTextColor(textColor, bgColor);
-    M5.Lcd.println("  Config & WiFi");
-    M5.Lcd.println("  Connectivity Test");
+    M5.Lcd.println("  WiFi Config & Status");
   } 
   else if (currentMode==1){
     M5.Lcd.setTextColor(textColor, bgColor);
     M5.Lcd.println("  Network Sentinel");
     M5.Lcd.setTextColor(highlightColor, bgColor);
-    M5.Lcd.println("> Config & WiFi");
-    M5.Lcd.setTextColor(textColor, bgColor);
-    M5.Lcd.println("  Connectivity Test");
+    M5.Lcd.println("> WiFi Config & Status");
   } 
-  else if(currentMode==2){
-    M5.Lcd.setTextColor(textColor, bgColor);
-    M5.Lcd.println("  Network Sentinel");
-    M5.Lcd.println("  Config & WiFi");
-    M5.Lcd.setTextColor(highlightColor, bgColor);
-    M5.Lcd.println("> Connectivity Test");
-  }
 }
-
 
 void runMode(int mode){
   switch (mode){
@@ -145,10 +125,6 @@ void runMode(int mode){
       M5.Lcd.println("WiFi config...");
       showConfig();
       delay(1000);
-      break;
-
-    case 2:
-      runConnectivityTest();
       break;
   }
 }
@@ -253,6 +229,7 @@ void discoverDevices() {
   }
 
   foundCount = 0;
+  int devicesFound = 0;
   M5.Lcd.print("Local IP: ");
   M5.Lcd.println(localIP);
   M5.Lcd.print("Subnet: ");
@@ -288,13 +265,14 @@ void discoverDevices() {
     if (alive) {
       if (foundCount < MAX_FOUND) foundIPv4[foundCount] = cur;
       foundCount++;
+      devicesFound++;
     }
 
     scanned++;
     if ((scanned % 4) == 0 || scanned == totalToScan) {
       M5.Lcd.setCursor(0, 70);
       M5.Lcd.setTextColor(TFT_YELLOW, BLACK);
-      M5.Lcd.printf("Progress: %u/%u   ", scanned, totalToScan);
+      M5.Lcd.printf("Progress: %u/%u   Devices: %d", scanned, totalToScan, devicesFound);
     }
 
     delay(smallDelay);
@@ -451,7 +429,21 @@ void showConfig(){
   M5.Lcd.print("MAC: ");
   M5.Lcd.println(WiFi.macAddress());
 
+  // --- nowy ping test 8.8.8.8 ---
   M5.Lcd.setTextColor(TFT_WHITE, TFT_PURPLE);
+  M5.Lcd.print("Ping: ");
+  IPAddress testIP(8,8,8,8);
+  bool pingSuccess = false;
+  for(int i=0;i<3;i++){
+    if(Ping.ping(testIP, 1)){
+      pingSuccess = true;
+      break;
+    }
+    delay(200);
+  }
+  if(pingSuccess) M5.Lcd.println("OK");
+  else M5.Lcd.println("FAILED");
+
   M5.Lcd.println();
   M5.Lcd.println("Press BtnA or BtnB to go back");
 
@@ -462,44 +454,6 @@ void showConfig(){
     }
     delay(50);
   }
-}
-
-void runConnectivityTest(){
-  M5.Lcd.fillScreen(BLACK);
-  M5.Lcd.setCursor(0, 0);
-  M5.Lcd.setTextSize(1);
-  M5.Lcd.println("Connection test");
-
-  if(WiFi.status() != WL_CONNECTED){
-    M5.Lcd.println("Brak polaczenia WiFi!");
-    delay(2000);
-    return;
-  }
-
-  IPAddress testIP(8, 8, 8, 8);
-  M5.Lcd.println("Pingowanie 8.8.8.8 ...");
-
-  bool success = false;
-  for(int i = 0; i < 3; i++){
-    if(Ping.ping(testIP, 1)){
-      success = true;
-      break;
-    }
-    delay(200);
-  }
-
-  M5.Lcd.fillRect(0, 30, 160, 30, BLACK);
-  M5.Lcd.setCursor(0, 40);
-  if (success){
-    M5.Lcd.setTextColor(TFT_GREEN, BLACK);
-    M5.Lcd.println("Internet OK!");
-  } 
-  else{
-    M5.Lcd.setTextColor(TFT_RED, BLACK);
-    M5.Lcd.println("Brak internetu!");
-  }
-  M5.Lcd.setTextColor(WHITE, BLACK);
-  delay(2000);
 }
 
 String ipv4ToString(uint32_t ip){
