@@ -23,9 +23,9 @@ String ipv4ToString(uint32_t ip);
 uint32_t ipToUint32(const IPAddress &ip);
 IPAddress uint32ToIP(uint32_t v);
 
-//signal bars helper (returns a string with 0..4 bars "▂▄▆█")
+// signal bars helper (returns a string with 0..4 bars "▂▄▆█")
 String getSignalBarsString(int rssi) {
-  //return a string composed of characters representing signal strength.
+  // English comment: return a string composed of characters representing signal strength.
   if (rssi >= -50) return "▂▄▆█";
   else if (rssi >= -60) return "▂▄▆";
   else if (rssi >= -70) return "▂▄";
@@ -36,35 +36,32 @@ String getSignalBarsString(int rssi) {
 // =============================
 // RSSI -> distance (calibrated)
 // =============================
-//calibrated constants derived from measurements.
-const float CALIB_TX_DBM = -39.242647115718064; //calibrated tx at 1m
-const float CALIB_N = 2.8224303224420297;      //calibrated path-loss exponent
+// English comment: calibrated constants derived from user's measurements.
+const float CALIB_TX_DBM = -39.242647115718064; // calibrated tx at 1m
+const float CALIB_N = 2.8224303224420297;      // calibrated path-loss exponent
 
-//convert RSSI (dBm) to approximate distance in meters
-float rssiToMeters(int rssi){
+// English comment: convert RSSI (dBm) to approximate distance in meters
+float rssiToMeters(int rssi) {
   if (rssi == 0) return -1.0;
   float expv = (CALIB_TX_DBM - (float)rssi) / (10.0 * CALIB_N);
   float d = pow(10.0, expv);
   return d;
 }
 
-//format distance to readable string
-String formatDistance(float meters){
-  if (meters < 0)return String("?-m");
-  if (meters < 0.1){ // <10cm -> mm
+// English comment: format distance to readable string
+String formatDistance(float meters) {
+  if (meters < 0) return String("?-m");
+  if (meters < 0.1) { // <10cm -> mm
     int mm = (int)round(meters * 1000.0);
     return String(mm) + "mm";
-  } 
-  else if (meters < 1.0) { // 10cm..1m -> cm
-    int cm=(int)round(meters * 100.0);
+  } else if (meters < 1.0) { // 10cm..1m -> cm
+    int cm = (int)round(meters * 100.0);
     return String(cm) + "cm";
-  } 
-  else if (meters < 10.0) { // 1m..10m -> 1 decimal
+  } else if (meters < 10.0) { // 1m..10m -> 1 decimal
     char buf[16];
     snprintf(buf, sizeof(buf), "%.1fm", meters);
     return String(buf);
-  } 
-  else { // >=10m -> integer meters
+  } else { // >=10m -> integer meters
     char buf[16];
     snprintf(buf, sizeof(buf), "%.0fm", meters);
     return String(buf);
@@ -232,24 +229,31 @@ void wifiSignalBarsDraw(int rssi, int x, int y, uint16_t color, uint16_t bg) {
 // Mode 1: WiFi Scanner (two-line per network layout)
 // shows 5 networks per page: SSID (line1) | line2: bars ▂▄▆█ | dBm | distance
 // A -> next page (wraparound), B -> back to menu
+// After exiting scanner reconnects to CONFIG SSID from config_private.h
 // =============================
 void wifiScanner() {
   // ensure STA mode and fresh scan
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(150);
-
+  // run scan (this will temporarily break the current association)
   int n = WiFi.scanNetworks();
   if (n <= 0) {
     M5.Lcd.fillScreen(BLACK);
     displayBattery();
-    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.setCursor(0, 30);
     M5.Lcd.setTextColor(TFT_RED, BLACK);
     M5.Lcd.println("No networks found.");
     M5.Lcd.println("\nPress B to return.");
     while (true) {
       M5.update();
-      if (M5.BtnB.wasPressed()) return;
+      if (M5.BtnB.wasPressed()) {
+        // reconnect to configured network before returning
+        WiFi.scanDelete();
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        int rt = 0;
+        while(WiFi.status() != WL_CONNECTED && rt < 10){ delay(200); rt++; }
+        isConnected = wifiConnected();
+        return;
+      }
       delay(50);
     }
   }
@@ -260,9 +264,12 @@ void wifiScanner() {
 
   while (true) {
     M5.Lcd.fillScreen(BLACK);
+    // top: battery
     displayBattery();
+    // header line below battery (start a bit lower so it doesn't overlap)
+    M5.Lcd.setCursor(0, 20);
     M5.Lcd.setTextColor(TFT_CYAN, BLACK);
-    M5.Lcd.printf("WiFi Scanner (%d found)\n\n", n);
+    M5.Lcd.printf("WiFi Scanner (found: %d)\n\n", n);
 
     int start = page * perPage;
     int end = min(start + perPage, n);
@@ -300,7 +307,12 @@ void wifiScanner() {
         break;
       }
       if (M5.BtnB.wasPressed()) {
+        // cleanup scan data and reconnect to configured network
         WiFi.scanDelete();
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        int rt = 0;
+        while(WiFi.status() != WL_CONNECTED && rt < 10){ delay(200); rt++; }
+        isConnected = wifiConnected();
         return;
       }
       delay(50);
@@ -539,7 +551,7 @@ int selectDevice() {
   return -1;
 }
 
-//new wrapper: portScan shows mode menu then calls portScan_Do
+
 void portScan(uint32_t targetIPv4, bool fullScan) {
   IPAddress target = uint32ToIP(targetIPv4);
   // popular ports list
@@ -662,7 +674,7 @@ void showConfig(){
   int rssi = WiFi.RSSI();
   M5.Lcd.print("RSSI: ");
   M5.Lcd.printf("%d dBm  ", rssi);
-  // use same bars in config view
+ 
   M5.Lcd.setTextColor(TFT_CYAN, TFT_PURPLE);
   M5.Lcd.print(getSignalBarsString(rssi));
   M5.Lcd.println();
