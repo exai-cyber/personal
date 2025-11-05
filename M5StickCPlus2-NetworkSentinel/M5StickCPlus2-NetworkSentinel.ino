@@ -9,6 +9,7 @@ bool isConnected=false;//--->every function will check if wifiConnected()
 
 void showMenu();
 void runMode(int mode);
+void displayBattery();
 //modes 
 void showConfig(); //1
 void netScanner(); //0
@@ -57,7 +58,7 @@ void setup(){
 
 void loop() {
   M5.update();
-
+  
   if(M5.BtnA.wasPressed()){
     currentMode++;
     if(currentMode>1)currentMode = 0;
@@ -92,6 +93,7 @@ void showMenu(){
 
   M5.Lcd.setCursor(10, 0);
   M5.Lcd.println("==== MENU ====");
+  displayBattery();
 
   M5.Lcd.setCursor(0, 30);
 
@@ -130,7 +132,15 @@ void runMode(int mode){
 }
 
 //--------------------------------MAIN FUNCTIONS----------------------------------------
+void displayBattery(){
+  int vol = StickCP2.Power.getBatteryVoltage();
+  float batPercent = (vol - 3300) / 9.0;
+  if (batPercent < 0) batPercent = 0;
+  if (batPercent > 100) batPercent = 100;
 
+  StickCP2.Display.setCursor(190, 0);
+  StickCP2.Display.printf("Bat: %.0f%%", batPercent);
+}
 void netScanner(){
   isConnected = wifiConnected();
 
@@ -243,33 +253,33 @@ void discoverDevices() {
   uint32_t scanned = 0;
   uint32_t totalToScan = (end >= start) ? (end - start + 1) : 0;
 
-  for (uint32_t cur = start; cur <= end; ++cur) {
+  for(uint32_t cur=start; cur<=end; ++cur){
     M5.update();
     if (M5.BtnB.wasPressed()) {
       M5.Lcd.println("\nScan aborted");
       return;
     }
 
-    if (cur == ipNum) { scanned++; }
+    if(cur == ipNum){ scanned++; }
 
     IPAddress target = uint32ToIP(cur);
-    bool alive = Ping.ping(target, pingAttempts);
+    bool alive=Ping.ping(target, pingAttempts);
 
-    if (!alive) {
+    if(!alive){
       WiFiClient sock;
-      if (sock.connect(target, 80, tcpTimeoutMs)) { alive = true; sock.stop(); }
-      else if (sock.connect(target, 443, tcpTimeoutMs)) { alive = true; sock.stop(); }
-      else if (sock.connect(target, 22, tcpTimeoutMs)) { alive = true; sock.stop(); }
+      if(sock.connect(target, 80, tcpTimeoutMs)){ alive = true; sock.stop(); }
+      else if(sock.connect(target, 443, tcpTimeoutMs)){ alive = true; sock.stop(); }
+      else if(sock.connect(target, 22, tcpTimeoutMs)){ alive = true; sock.stop(); }
     }
 
-    if (alive) {
-      if (foundCount < MAX_FOUND) foundIPv4[foundCount] = cur;
+    if(alive){
+      if(foundCount < MAX_FOUND)foundIPv4[foundCount]=cur;
       foundCount++;
       devicesFound++;
     }
 
     scanned++;
-    if ((scanned % 4) == 0 || scanned == totalToScan) {
+    if((scanned%4)==0||scanned==totalToScan){
       M5.Lcd.setCursor(0, 70);
       M5.Lcd.setTextColor(TFT_YELLOW, BLACK);
       M5.Lcd.printf("Progress: %u/%u   Devices: %d", scanned, totalToScan, devicesFound);
@@ -285,27 +295,28 @@ void discoverDevices() {
   delay(300);
 }
 
-int selectDevice() {
-  if (foundCount == 0) return -1;
+int selectDevice(){
+  if (foundCount==0)return -1;
 
-  const int perPage = 6;
-  int page = 0;
-  int cursor = 0;
-  int totalPages = (foundCount + perPage - 1) / perPage;
+  const int perPage=6;
+  int page=0;
+  int cursor=0;
+  int totalPages=(foundCount+perPage-1)/perPage;
 
-  while (true) {
+  while(true){
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(1);
     M5.Lcd.setCursor(0, 0);
     M5.Lcd.printf("Select device (%d)\n\n", foundCount);
 
-    int start = page * perPage;
-    int end = min(start + perPage, foundCount);
-    for (int i = start; i < end; ++i) {
-      if (i == cursor) {
+    int start=page*perPage;
+    int end=min(start + perPage, foundCount);
+    for (int i = start; i < end; ++i){
+      if(i == cursor){
         M5.Lcd.setTextColor(TFT_GREEN, BLACK);
         M5.Lcd.print("> ");
-      } else {
+      } 
+      else{
         M5.Lcd.setTextColor(WHITE, BLACK);
         M5.Lcd.print("  ");
       }
@@ -315,15 +326,15 @@ int selectDevice() {
     M5.Lcd.setTextColor(TFT_YELLOW, BLACK);
     M5.Lcd.printf("\nA-next  B-select  Pg %d/%d", page+1, totalPages);
 
-    while (true) {
+    while(true){
       M5.update();
-      if (M5.BtnA.wasPressed()) {
+      if(M5.BtnA.wasPressed()){
         cursor++;
-        if (cursor >= foundCount) cursor = 0;
+        if(cursor >= foundCount)cursor = 0;
         page = cursor / perPage;
         break;
       }
-      if (M5.BtnB.wasPressed()) {
+      if(M5.BtnB.wasPressed()){
         return cursor;
       }
       delay(50);
@@ -333,7 +344,7 @@ int selectDevice() {
   return -1;
 }
 
-void portScan(uint32_t targetIPv4, bool fullScan) {
+void portScan(uint32_t targetIPv4, bool fullScan){
   IPAddress target = uint32ToIP(targetIPv4);
   const int popularPorts[] = {22, 23, 80, 443, 8080, 8443, 3306, 3389};
   const int npop = sizeof(popularPorts)/sizeof(popularPorts[0]);
@@ -429,7 +440,7 @@ void showConfig(){
   M5.Lcd.print("MAC: ");
   M5.Lcd.println(WiFi.macAddress());
 
-  // --- nowy ping test 8.8.8.8 ---
+  //ping test 8.8.8.8
   M5.Lcd.setTextColor(TFT_WHITE, TFT_PURPLE);
   M5.Lcd.print("Ping: ");
   IPAddress testIP(8,8,8,8);
@@ -468,3 +479,4 @@ uint32_t ipToUint32(const IPAddress &ip){
 IPAddress uint32ToIP(uint32_t v){
   return IPAddress((v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF);
 }
+
