@@ -4,4 +4,4 @@
 *.hex
 
 #Private config
-include/config_private.h
+include/config_private.cpp
